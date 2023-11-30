@@ -1,0 +1,23 @@
+resnet50_epoch20_93.41.pth
+lr=0.0001
+optimizer=SGD with Momentum(0.9)
+
+
+resnet50_epoch20_95.33.pth
+lr=0.001
+optimizer=SGD with Momentum(0.9)
+
+
+resnet50_epoch25_84.89.pth
+lr=0.00001
+optimizer=SGD with Momentum(0.9)
+
+
+resnet50_epoch30_94.23.pth
+lr=0.00005
+optimizer=SGD with Momentum(0.9)
+
+
+resnet50_epoch30_89.84.pth
+lr=0.00002
+optimizer=SGD with Momentum(0.9)
