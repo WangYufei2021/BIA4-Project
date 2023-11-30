@@ -21,3 +21,8 @@ optimizer=SGD with Momentum(0.9)
 resnet50_epoch30_89.84.pth
 lr=0.00002
 optimizer=SGD with Momentum(0.9)
+
+
+resnet50_epoch25_94.23.pth
+lr=0.00008
+optimizer=SGD with Momentum(0.9)
