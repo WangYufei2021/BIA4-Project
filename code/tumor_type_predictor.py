@@ -265,8 +265,8 @@ plt.savefig(f"models/resnet50_epoch30_acc_loss.jpg") #save the accuracy-loss fig
 
 
 ######### Encapsulate the prediction function #########
-
-# For Mac users
+'''
+# For Mac users (the users should have GPU/mps))
 def TUMOR_TYPE_PREDICTOR(model_path, img_path):
 
     img = cv2.imread(img_path)
@@ -291,7 +291,9 @@ def TUMOR_TYPE_PREDICTOR(model_path, img_path):
     return
 
 '''
-# For non-Mac users
+
+'''
+# For non-Mac users (the users should have GPU/cuda)
 def TUMOR_TYPE_PREDICTOR(model_path, img_path):
 
     img = cv2.imread(img_path)
@@ -316,27 +318,51 @@ def TUMOR_TYPE_PREDICTOR(model_path, img_path):
     return
 '''
 
+# General Function
+def TUMOR_TYPE_PREDICTOR(model_path, img_path):
+
+    img = cv2.imread(img_path)
+    plt.imshow(img) #print the input image
+
+    transform = transforms.Compose([
+        transforms.Resize([224,224]), #resize the image to the specified size
+        transforms.ToTensor(), #convert the image to tensor
+        transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225]) #normalize the images 
+    ])
+
+    model = torch.load(model_path, map_location='cpu') #load the trained model
+    model.eval()
+    tumor_type = ["benign", "malignant"]
+    image = torch.unsqueeze(transform(Image.open(img_path).convert("RGB")), dim=0)
+    with torch.no_grad():
+        pred = torch.argmax(model(image),dim=-1).cpu().numpy()[0]
+
+    print(f"This breast cancer histopathology slide is predicted to be: {tumor_type[pred]}")
+
+    return
+
+
 
 
 
 ######### Use the image from the test datasets to check ######### 
-TUMOR_TYPE_PREDICTOR(model_path='/Users/wangyufei/BIA4/project/models/resnet50_epoch30_94.23.pth', 
-                     img_path='/Users/wangyufei/BIA4/project/BreaKHis 400X/test/benign/SOB_B_TA-14-16184CD-400-022.png')
+TUMOR_TYPE_PREDICTOR(model_path='models/resnet50_epoch30_94.23.pth', 
+                     img_path='BreaKHis 400X/test/benign/SOB_B_TA-14-16184CD-400-022.png')
 '''
 Some img_path of benign samples from the test datasets:
-/Users/wangyufei/BIA4/project/BreaKHis 400X/test/benign/SOB_B_F-14-21998CD-400-003.png
-/Users/wangyufei/BIA4/project/BreaKHis 400X/test/benign/SOB_B_TA-14-13200-400-015.png
-/Users/wangyufei/BIA4/project/BreaKHis 400X/test/benign/SOB_B_TA-14-16184CD-400-022.png
-/Users/wangyufei/BIA4/project/BreaKHis 400X/test/benign/SOB_B_A-14-22549CD-400-004.png
+BreaKHis 400X/test/benign/SOB_B_F-14-21998CD-400-003.png
+BreaKHis 400X/test/benign/SOB_B_TA-14-13200-400-015.png
+BreaKHis 400X/test/benign/SOB_B_TA-14-16184CD-400-022.png
+BreaKHis 400X/test/benign/SOB_B_A-14-22549CD-400-004.png
 '''
 
 
-TUMOR_TYPE_PREDICTOR(model_path='/Users/wangyufei/BIA4/project/models/resnet50_epoch30_94.23.pth', 
-                     img_path='/Users/wangyufei/BIA4/project/BreaKHis 400X/test/malignant/SOB_M_LC-14-13412-400-020.png')
+TUMOR_TYPE_PREDICTOR(model_path='models/resnet50_epoch30_94.23.pth', 
+                     img_path='BreaKHis 400X/test/malignant/SOB_M_LC-14-13412-400-020.png')
 '''
 Some img_path of malignant samples from the test datasets:
-/Users/wangyufei/BIA4/project/BreaKHis 400X/test/malignant/SOB_M_DC-14-4372-400-016.png
-/Users/wangyufei/BIA4/project/BreaKHis 400X/test/malignant/SOB_M_DC-14-14015-400-001.png
-/Users/wangyufei/BIA4/project/BreaKHis 400X/test/malignant/SOB_M_PC-14-19440-400-018.png
-/Users/wangyufei/BIA4/project/BreaKHis 400X/test/malignant/SOB_M_LC-14-13412-400-020.png
+BreaKHis 400X/test/malignant/SOB_M_DC-14-4372-400-016.png
+BreaKHis 400X/test/malignant/SOB_M_DC-14-14015-400-001.png
+BreaKHis 400X/test/malignant/SOB_M_PC-14-19440-400-018.png
+BreaKHis 400X/test/malignant/SOB_M_LC-14-13412-400-020.png
 '''
