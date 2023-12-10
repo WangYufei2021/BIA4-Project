@@ -1,3 +1,11 @@
+'''
+Here are codes for training the model, not for users to use. 
+If you are interested how our model is trained, you can take a look.
+'''
+
+
+
+
 ######### Import package #########
 # For data pre-processing
 import torch
@@ -15,6 +23,8 @@ import gc
 from PIL import Image
 import cv2
 import matplotlib.pyplot as plt
+
+
 
 
 
@@ -37,6 +47,7 @@ if device == torch.device('mps'):
 
 
 
+
 ######### Pre-process the imput images #########
 '''
 Since the size of the original image may not be consistent
@@ -51,9 +62,9 @@ transform = transforms.Compose([
 ])
 
 '''
-# Pre-process the imput images (new version, not that much satisfied for epoch20, maybe increase the epoch will be better)
-# Modify the data enhancement section
-# It does not work very well, so we currently do not use it here
+# New version, not that much satisfied.
+# We modify the data enhancement section here. However, it does not work very well, so we currently do not use it.
+# Save this code here for now in case you need it later
 
 transform = transforms.Compose([
     transforms.Resize([224, 224]), #resize the image to the specified size
@@ -67,12 +78,13 @@ transform = transforms.Compose([
 
 
 
+
 ######### Prepare the datasets ######### 
 '''
 We use the torchvision.datasets.ImageFolder to read images in bulk
 We use torch.utils.data.DataLoader to read the data into batches to input data to the network
 
-The folders of BreaKHis 400X are three folders (train, test, validation) manually divided by us
+The folders in 'BreaKHis 400X' are three folders (train, test, validation) manually divided by us
 Each folder has its own subfolder (benign, malignant)
 Datasets are read in a specific order, benign is 0 and malignant is 1
 
@@ -92,6 +104,7 @@ test_loader = Data.DataLoader(testset, batch_size =2, num_workers=0) #construct 
 
 # Take a look at the category and label index
 trainset.class_to_idx
+
 
 
 
@@ -125,6 +138,8 @@ class ResNet50(nn.Module):
 
 model = ResNet50().to(device)
 
+# We also tried DenseNet201 using other device, and the result is good. The trained model is saved in 'models' directory.
+
 
 
 
@@ -142,24 +157,30 @@ optimizer = optim.SGD(model.parameters(), lr=0.00005, momentum=0.9)
 
 
 
+
+
 ######### Prepare for model Training ######### 
 '''
-Here, We created two functions: 'train_one_epoch' and 'validation_one_epoch'
-
-Using 'train_one_epoch' as an example
-It enumerates data from the DataLoader, and on each pass of the loop does the following:
-Gets a batch of training data from the train_loader
-Save the images and labels into GPU (if the device is available)
-Make predictions for an input batch
-Zero the gradients for every batch
-Calculate the loss for the predictions and true labels
-Save and return the training loss and accuracy
-
+Here, We created two functions: 'train_one_epoch' and 'validation_one_epoch' to calculate 4 values in each epoch: train accuracy, train loss, validation accracy, validation loss
 We learned this part through the tutorials from the afficial PyTorch website
 References: https://pytorch.org/tutorials/beginner/introyt/trainingyt.html
 '''
 
 def train_one_epoch(train_loader, model, criterion, optimizer):
+    '''
+    @brief:
+        Use enumerate to track the batch from the DataLoader
+        Make the pediction for an input batch
+        According to the model, criterion, and optimizer, calculate the train accuracy and loss for each epoch
+    @args:
+        train_loader: the input image sets
+        model: input the CNN model, for example, ResNet50
+        criterion: input the criterion, for example, CrossEntropyLoss
+        optimizer: input the optimizer, for example, SGD
+    @returns:
+        train_loss: the difference between the true label and the predicted label of the training dataset
+        train_accuracy: the accuracy rate of the predicted label of the training dataset
+    '''
     model.train()
     running_loss = 0.0
     metric = 0.0
@@ -188,11 +209,12 @@ def train_one_epoch(train_loader, model, criterion, optimizer):
 
     return train_loss, train_accuracy    
 
-'''
-'validation_one_epoch' function is relatively the same as the 'train_one_epoch' function
-But only calculate the loss without using the optimizer and loss.backward()
-'''
+
 def validation_one_epoch(val_loader, model, criterion):
+    '''
+    This function is relatively the same as the 'train_one_epoch' function, but for the validation dataset
+    But only calculate the loss without using the optimizer and loss.backward()
+    '''
     model.eval()
     running_loss = 0.0
     total = 0.0
@@ -216,6 +238,9 @@ def validation_one_epoch(val_loader, model, criterion):
     validation_accuracy = 100*metric/total #convert to percentage
 
     return validation_loss, validation_accuracy 
+
+
+
 
 
 ######### Train the model ######### 
@@ -247,80 +272,39 @@ torch.save(model, f"models/resnet50_epoch30.pth") #save the model
 
 
 
+
 ######### Visualise the accuracy and loss using line chart ######### 
 fig, ax = plt.subplots(1, 2, figsize=(10, 5))
 
+# draw the accuracy curves
 ax[0].plot(train_accuracys, color='blue', label='Training accuracy')
 ax[0].plot(validation_accuracys, color='orange', label='Validation accuracy')
 ax[0].legend()
 
+# draw the loss curves
 ax[1].plot(train_losses, color='blue', label='Training loss')
 ax[1].plot(validation_losses, color='orange', label='Validation loss')
 ax[1].legend()
 
 plt.plot()
-plt.savefig(f"models/resnet50_epoch30_acc_loss.jpg") #save the accuracy-loss fig into the models dir
+plt.savefig(f"models/resnet50_epoch30_acc_loss.jpg") #save the accuracy-loss fig into the 'models' directory
+
 
 
 
 
 ######### Encapsulate the prediction function #########
-'''
-# For Mac users (the users should have GPU/mps))
 def TUMOR_TYPE_PREDICTOR(model_path, img_path):
-
-    img = cv2.imread(img_path)
-    plt.imshow(img) #print the input image
-
-    device = torch.device('mps' if torch.backends.mps.is_available () else 'cpu')
-    transform = transforms.Compose([
-        transforms.Resize([224,224]), #resize the image to the specified size
-        transforms.ToTensor(), #convert the image to tensor
-        transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225]) #normalize the images 
-    ])
-
-    model = torch.load(model_path).to(device) #load the trained model
-    model.eval()
-    tumor_type = ["benign", "malignant"]
-    image = torch.unsqueeze(transform(Image.open(img_path).convert("RGB")), dim=0).to(device)
-    with torch.no_grad():
-        pred = torch.argmax(model(image),dim=-1).cpu().numpy()[0]
-
-    print(f"This breast cancer histopathology slide is predicted to be: {tumor_type[pred]}")
-
-    return
-
-'''
-
-'''
-# For non-Mac users (the users should have GPU/cuda)
-def TUMOR_TYPE_PREDICTOR(model_path, img_path):
-
-    img = cv2.imread(img_path)
-    plt.imshow(img) #print the input image
-
-    device = torch.device('cuda' if torch.cuda.is_available () else 'cpu')
-    transform = transforms.Compose([
-        transforms.Resize([224,224]), #resize the image to the specified size
-        transforms.ToTensor(), #convert the image to tensor
-        transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225]) #normalize the images 
-    ])
-
-    model = torch.load(model_path).to(device) #load the trained model
-    model.eval()
-    tumor_type = ["benign", "malignant"]
-    image = torch.unsqueeze(transform(Image.open(img_path).convert("RGB")), dim=0).to(device)
-    with torch.no_grad():
-        pred = torch.argmax(model(image),dim=-1).cpu().numpy()[0]
-
-    print(f"This breast cancer histopathology slide is predicted to be: {tumor_type[pred]}")
-
-    return
-'''
-
-# General Function
-def TUMOR_TYPE_PREDICTOR(model_path, img_path):
-
+    '''
+    @brief:
+        This is a function using the input CNN model to predic the tumour type
+        First, it will pre-process the input image, then load the model to predict the image and print the image and predicted result
+    @args:
+        model_path: the directory path of the trained model
+        img_path: the directory path of the input image
+    @returns:
+        This function print the input image and the predicted result
+    '''
     img = cv2.imread(img_path)
     plt.imshow(img) #print the input image
 
@@ -330,7 +314,7 @@ def TUMOR_TYPE_PREDICTOR(model_path, img_path):
         transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225]) #normalize the images 
     ])
 
-    model = torch.load(model_path, map_location='cpu') #load the trained model
+    model = torch.load(model_path, map_location='cpu') #load the trained model for general uses who have cpu, not sure everyone has gpu
     model.eval()
     tumor_type = ["benign", "malignant"]
     image = torch.unsqueeze(transform(Image.open(img_path).convert("RGB")), dim=0)
@@ -338,7 +322,6 @@ def TUMOR_TYPE_PREDICTOR(model_path, img_path):
         pred = torch.argmax(model(image),dim=-1).cpu().numpy()[0]
 
     print(f"This breast cancer histopathology slide is predicted to be: {tumor_type[pred]}")
-
     return
 
 
@@ -346,8 +329,8 @@ def TUMOR_TYPE_PREDICTOR(model_path, img_path):
 
 
 ######### Use the image from the test datasets to check ######### 
-TUMOR_TYPE_PREDICTOR(model_path='models/resnet50_epoch30_94.23.pth', 
-                     img_path='BreaKHis 400X/test/benign/SOB_B_TA-14-16184CD-400-022.png')
+TUMOR_TYPE_PREDICTOR(model_path='models/resnet50_epoch30_94.23.pth', #input the model directory path here
+                     img_path='BreaKHis 400X/test/benign/SOB_B_TA-14-16184CD-400-022.png') #input the image directory path here
 '''
 Some img_path of benign samples from the test datasets:
 BreaKHis 400X/test/benign/SOB_B_F-14-21998CD-400-003.png
@@ -357,8 +340,8 @@ BreaKHis 400X/test/benign/SOB_B_A-14-22549CD-400-004.png
 '''
 
 
-TUMOR_TYPE_PREDICTOR(model_path='models/resnet50_epoch30_94.23.pth', 
-                     img_path='BreaKHis 400X/test/malignant/SOB_M_LC-14-13412-400-020.png')
+TUMOR_TYPE_PREDICTOR(model_path='models/resnet50_epoch30_94.23.pth', #input the model directory path here
+                     img_path='BreaKHis 400X/test/malignant/SOB_M_LC-14-13412-400-020.png') #input the image directory path here
 '''
 Some img_path of malignant samples from the test datasets:
 BreaKHis 400X/test/malignant/SOB_M_DC-14-4372-400-016.png
